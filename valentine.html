@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>💘 Valentine?</title>
+  <style>
+    :root { --bg1:#ffdee9; --bg2:#b5fffc; --card:#ffffffcc; --text:#222; }
+    *{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+    body{
+      margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+      background: radial-gradient(circle at top, var(--bg1), var(--bg2));
+      overflow:hidden;
+    }
+    .card{
+      width:min(92vw,420px);
+      background:var(--card);
+      backdrop-filter: blur(8px);
+      border-radius:24px;
+      padding:22px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.12);
+      text-align:center;
+      position:relative;
+    }
+    h1{margin:8px 0 6px;font-size:28px;color:var(--text)}
+    p{margin:0 0 16px;color:#333;line-height:1.35}
+    .buttons{
+      position:relative;
+      height:140px;
+      margin-top:8px;
+      border-radius:18px;
+      background: rgba(255,255,255,.45);
+      border: 1px solid rgba(0,0,0,.06);
+      overflow:hidden;
+    }
+    button{
+      appearance:none; border:0; border-radius:999px;
+      padding:14px 18px; font-size:18px; font-weight:700;
+      box-shadow: 0 8px 18px rgba(0,0,0,.12);
+      cursor:pointer;
+      touch-action: manipulation;
+      user-select:none;
+    }
+    #yesBtn{ background:#ff4d6d; color:white; position:absolute; left:18px; top:44px; }
+    #noBtn { background:white; color:#222; position:absolute; right:18px; top:44px; }
+    .tiny{font-size:12px; opacity:.75; margin-top:10px}
+    .counter{margin-top:10px;font-weight:600}
+    .hidden{display:none}
+    .msg{
+      margin-top:14px;
+      padding:14px 12px;
+      border-radius:16px;
+      background: rgba(255,255,255,.7);
+      border: 1px solid rgba(0,0,0,.06);
+    }
+    .actions{
+      display:flex; gap:10px; justify-content:center; flex-wrap:wrap;
+      margin-top:12px;
+    }
+    .secondary{
+      background:#222; color:#fff;
+    }
+    .ghost{
+      background:transparent; color:#222; box-shadow:none; border:1px solid rgba(0,0,0,.15);
+    }
+
+    /* hearts */
+    .heart{
+      position:fixed;
+      left:0; top:0;
+      font-size:22px;
+      pointer-events:none;
+      animation: fall linear forwards;
+      filter: drop-shadow(0 4px 6px rgba(0,0,0,.15));
+    }
+    @keyframes fall{
+      0%   { transform: translate(var(--x), -40px) rotate(0deg); opacity:0; }
+      10%  { opacity:1; }
+      100% { transform: translate(var(--x2), 110vh) rotate(360deg); opacity:0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Will you be my Valentine? 💘</h1>
+    <p>Choose wisely… 😇</p>
+
+    <div class="buttons" id="arena">
+      <button id="yesBtn">Yes 💖</button>
+      <button id="noBtn">No 🙃</button>
+    </div>
+
+    <div class="counter" id="counter">“No” tries: <span id="noCount">0</span></div>
+    <div class="tiny">Tip: if “No” runs away… that’s normal 😄</div>
+
+    <div class="msg hidden" id="resultBox">
+      <div id="resultText" style="font-size:18px;font-weight:800;margin-bottom:6px;"></div>
+      <div id="prankText"></div>
+
+      <div class="actions">
+        <button class="secondary" id="shareBtn">Send result on WhatsApp</button>
+        <button class="ghost" id="resetBtn">Reset</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // === Customize these two lines ===
+    const YOUR_NAME = "Someone 😎";         // shows in the WhatsApp message
+    const PRANK_MESSAGE = const PRANK_MESSAGE = "Gotcha 😜 This was only a prank. Thanks for playing along 😂";
+
+    const yesBtn = document.getElementById("yesBtn");
+    const noBtn = document.getElementById("noBtn");
+    const arena = document.getElementById("arena");
+    const noCountEl = document.getElementById("noCount");
+    const counter = document.getElementById("counter");
+    const resultBox = document.getElementById("resultBox");
+    const resultText = document.getElementById("resultText");
+    const prankText = document.getElementById("prankText");
+    const shareBtn = document.getElementById("shareBtn");
+    const resetBtn = document.getElementById("resetBtn");
+
+    let noTries = Number(localStorage.getItem("noTries") || 0);
+    let answered = localStorage.getItem("answered") || ""; // "yes" or ""
+    noCountEl.textContent = noTries;
+
+    function clamp(n, min, max){ return Math.max(min, Math.min(max, n)); }
+
+    function moveNoButton() {
+      const rect = arena.getBoundingClientRect();
+      const btnRect = noBtn.getBoundingClientRect();
+
+      // Random position inside arena with padding
+      const pad = 12;
+      const maxX = rect.width - btnRect.width - pad;
+      const maxY = rect.height - btnRect.height - pad;
+
+      const x = clamp(Math.random() * maxX, pad, maxX);
+      const y = clamp(Math.random() * maxY, pad, maxY);
+
+      noBtn.style.left = x + "px";
+      noBtn.style.top  = y + "px";
+      noBtn.style.right = "auto";
+    }
+
+    function showerHearts(count = 40) {
+      const hearts = ["💖","💘","💕","💗","💝","❤️"];
+      for (let i = 0; i < count; i++) {
+        const el = document.createElement("div");
+        el.className = "heart";
+        el.textContent = hearts[Math.floor(Math.random() * hearts.length)];
+        const startX = Math.random() * window.innerWidth;
+        const drift = (Math.random() * 160) - 80;  // sideways drift
+        const duration = 2.6 + Math.random() * 1.8;
+
+        el.style.setProperty("--x", startX + "px");
+        el.style.setProperty("--x2", (startX + drift) + "px");
+        el.style.animationDuration = duration + "s";
+        el.style.fontSize = (18 + Math.random() * 18) + "px";
+        el.style.zIndex = 9999;
+
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), duration * 1000 + 100);
+      }
+    }
+
+    function showResult() {
+      resultBox.classList.remove("hidden");
+      counter.style.opacity = "1";
+    }
+
+    function buildWhatsAppText() {
+      const msg = `Valentine prank result 💘
+Reply: YES ✅
+"No" tries: ${noTries}
+— sent from ${YOUR_NAME}`;
+      return msg;
+    }
+
+    function openWhatsAppWithText(text) {
+      const url = "https://wa.me/?text=" + encodeURIComponent(text);
+      window.location.href = url;
+    }
+
+    // If already answered yes (reload), show it
+    if (answered === "yes") {
+      showResult();
+      resultText.textContent = "You said YES! 💖";
+      prankText.textContent = PRANK_MESSAGE;
+    }
+
+    // Make "No" run away when pressed (tap/click)
+    function onNoAttempt(e){
+      e.preventDefault();
+      if (answered === "yes") return;
+      noTries += 1;
+      noCountEl.textContent = noTries;
+      localStorage.setItem("noTries", String(noTries));
+      moveNoButton();
+    }
+
+    noBtn.addEventListener("click", onNoAttempt);
+    noBtn.addEventListener("touchstart", onNoAttempt, {passive:false});
+
+    // Yes: hearts + prank message + prompt to send via WhatsApp
+    yesBtn.addEventListener("click", () => {
+      if (answered === "yes") return;
+      localStorage.setItem("answered", "yes");
+      answered = "yes";
+
+      showerHearts(55);
+      showResult();
+      resultText.textContent = "You said YES! 💖";
+      prankText.textContent = PRANK_MESSAGE;
+
+      // small extra heart burst
+      setTimeout(() => showerHearts(35), 450);
+    });
+
+    shareBtn.addEventListener("click", () => {
+      openWhatsAppWithText(buildWhatsAppText());
+    });
+
+    resetBtn.addEventListener("click", () => {
+      localStorage.removeItem("noTries");
+      localStorage.removeItem("answered");
+      noTries = 0;
+      answered = "";
+      noCountEl.textContent = "0";
+      resultBox.classList.add("hidden");
+      // put No back to default
+      noBtn.style.right = "18px";
+      noBtn.style.left = "auto";
+      noBtn.style.top = "44px";
+    });
+
+    // Start with a slightly “unfair” No position sometimes 😄
+    if (noTries > 0) moveNoButton();
+  </script>
+</body>
+</html>
